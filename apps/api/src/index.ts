@@ -1,14 +1,13 @@
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { SHARED_MESSAGE } from '@hss/shared';
 
 const app = new Hono();
 
 app.use('/*', cors());
 
 app.get('/', (c) => {
-  return c.json({ message: 'HSS Drive API', shared: SHARED_MESSAGE });
+  return c.json({ message: 'HSS Drive API Ready' });
 });
 
 const port = 3000;

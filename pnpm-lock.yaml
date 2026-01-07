@@ -117,6 +117,10 @@ importers:
         version: 7.3.1(@types/node@24.10.4)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)
 
   packages/shared:
+    dependencies:
+      drizzle-orm:
+        specifier: ^0.30.10
+        version: 0.30.10(@types/pg@8.16.0)(@types/react@19.2.7)(pg@8.16.3)(react@19.2.3)
     devDependencies:
       typescript:
         specifier: ^5.4.5
@@ -2662,7 +2666,7 @@ snapshots:
 
   '@types/pg@8.16.0':
     dependencies:
-      '@types/node': 20.19.27
+      '@types/node': 24.10.4
       pg-protocol: 1.10.3
       pg-types: 2.2.0
 
