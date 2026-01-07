@@ -1,0 +1,12 @@
+# Frontend (SPA) - Serve static files
+:80 {
+    root * /srv
+    encode gzip
+    try_files {path} {path}/ /index.html
+    file_server
+}
+
+# API Reverse Proxy
+:80/api/* {
+    reverse_proxy api:3000
+}
