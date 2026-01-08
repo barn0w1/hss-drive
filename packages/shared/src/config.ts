@@ -7,10 +7,11 @@ export const UPLOAD_CONFIG = {
 
     /**
      * Files larger than this size will be uploaded using S3 Multipart Upload.
-     * Files smaller or equal to this size will be uploaded using a single PUT request.
-     * Usually aligned with CHUNK_SIZE.
+     * S3 requires parts to be at least 5MB.
+     * If this threshold is set too low while CHUNK_SIZE is large, small files might break.
+     * Setting this to 100MB ensures most small files go via Single PUT.
      */
-    MULTIPART_THRESHOLD: 128 * 1024 * 1024,
+    MULTIPART_THRESHOLD: 100 * 1024 * 1024,
 
     /**
      * Maximum number of concurrent uploads

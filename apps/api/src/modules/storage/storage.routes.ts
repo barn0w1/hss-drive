@@ -112,8 +112,10 @@ app.post("/multipart/sign-part", async (c) => {
  */
 app.post("/multipart/complete", async (c) => {
     const user = c.var.user;
+    if (!user) return c.json({ error: "Unauthorized" }, 401);
+
     const body = await c.req.json();
-    const { key, uploadId, parts, filename, size, hash, spaceId } = body;
+    const { key, uploadId, parts, filename, contentType, size, hash, spaceId } = body;
 
     try {
         // 1. If keyprovided, finalize file on S3/R2 (Otherwise it's a dedupe link)
@@ -138,7 +140,7 @@ app.post("/multipart/complete", async (c) => {
                  await db.insert(blobs).values({
                     hash: hash,
                     size: size, 
-                    mimeType: "application/octet-stream", 
+                    mimeType: contentType || "application/octet-stream", 
                 });
              }
         }

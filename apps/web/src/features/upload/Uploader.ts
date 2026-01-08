@@ -1,4 +1,4 @@
-import { UploaderOptions } from './types';
+import { UploaderOptions, UploadSession } from './types';
 import { UPLOAD_CONFIG } from '@hss/shared';
 
 /**
@@ -18,6 +18,10 @@ export class Uploader {
         chunkSize: UPLOAD_CONFIG.CHUNK_SIZE, 
         ...options 
     };
+  }
+
+  private emitProgress(payload: Partial<UploadSession>) {
+      this.options.onProgress?.(payload);
   }
 
   /**
@@ -50,7 +54,7 @@ export class Uploader {
       // CAS Hit (Fast Path)
       if (initData.exists) {
           console.log("CAS Hit: Instant upload");
-          this.options.onProgress?.(100);
+          this.emitProgress({ status: 'completed', progress: 100, hashProgress: 100, uploadProgress: 100 });
           await this.completeUpload(null, null, [], hash, this.options.spaceId!);
           return hash;
       }
@@ -59,8 +63,14 @@ export class Uploader {
       if (initData.url && !initData.uploadId) {
           // Single PUT Strategy
           console.log("Using Single PUT Strategy (Small File)");
-          await this.uploadToS3(initData.url, this.file);
-          this.options.onProgress?.(100);
+          this.emitProgress({ status: 'uploading', hashProgress: 100, uploadProgress: 0 });
+          
+          await this.uploadToS3(initData.url, this.file, (loaded) => {
+              const percent = Math.round((loaded / this.file.size) * 100);
+              this.emitProgress({ status: 'uploading', hashProgress: 100, uploadProgress: percent, progress: percent });
+          });
+          
+          this.emitProgress({ status: 'completed', progress: 100, hashProgress: 100, uploadProgress: 100 });
           await this.completeUpload(initData.key, null, [], hash, this.options.spaceId!);
           return hash;
       }
@@ -71,81 +81,53 @@ export class Uploader {
 
       // Step 3: Concurrent Chunk Upload
       const chunks = this.getChunks();
-      const parts: { ETag: string; PartNumber: number }[] = [];
       const totalSize = this.file.size;
-      let uploadedSize = 0;
+      console.log(`[Debug] File Size: ${totalSize}, Chunk Size: ${this.options.chunkSize}, Num Chunks: ${chunks.length}`);
+      
+      const parts: { ETag: string; PartNumber: number }[] = [];
+      const chunkProgress = new Map<number, number>(); // index -> bytes uploaded
+
+      const updateAggregateProgress = () => {
+          let totalUploaded = 0;
+          for (const val of chunkProgress.values()) {
+              totalUploaded += val;
+          }
+          const percent = Math.round((totalUploaded / totalSize) * 100);
+          this.emitProgress({ 
+              status: 'uploading', 
+              hashProgress: 100, 
+              uploadProgress: percent, 
+              progress: percent 
+          });
+      };
       
       // Concurrency Control
       const CONCURRENCY = UPLOAD_CONFIG.CONCURRENCY; 
 
-      const activePromises: Promise<void>[] = [];
-      
-      // Helper to process a single chunk
-      const processChunk = async (index: number) => {
-          if (this.aborted) return;
+      // Use Concurrent Executor to upload parts
+      await this.runConcurrent(chunks, CONCURRENCY, async (chunk, i) => {
+          if (this.aborted) throw new Error("Upload aborted");
           
-          const partNumber = index + 1;
-          const chunk = chunks[index];
-
+          const partNumber = i + 1;
+          
           // 1. Get Signed URL
           const { url: signedUrl } = await this.apiCall('/api/storage/multipart/sign-part', {
               key, uploadId, partNumber
           });
 
           // 2. Upload to S3
-          const eTag = await this.uploadToS3(signedUrl, chunk);
-          parts.push({ PartNumber: partNumber, ETag: eTag });
-
-          // 3. Progress Update (Atomic increment needed?)
-          // Since JS is single threaded event loop, this is safe
-          uploadedSize += chunk.size;
-          const percent = Math.round((uploadedSize / totalSize) * 100);
-          this.options.onProgress?.(percent);
-      };
-
-      // Execution Loop
-      for (let i = 0; i < chunks.length; i++) {
-          if (this.aborted) break;
-
-          // Create new task
-          const task = processChunk(i);
-          activePromises.push(task);
-
-          // If limit reached, wait for at least one to finish
-          if (activePromises.length >= CONCURRENCY) {
-              await Promise.race(activePromises);
-              // Clean up finished promises
-              // (Actually Promise.race doesn't remove, we need to filter)
-              // But standard pattern is just to await one.
-              // A better way for simple pool:
-          }
-          
-          // Basic Pool Cleanup: remove settled promises
-          // This is a bit naive but works for small concurrency
-          /* 
-             Actually, Promise.race just waits. It doesn't tell us WHICH one finished index-wise easily.
-             Let's use a simpler queueing approach or a library-free semaphore.
-          */
-      }
-
-      // Wait for all remaining
-      // To implement proper queue: use a recursion or iterative approach
-      // Re-implementing correctly below:
-      
-      await this.runConcurrent(chunks, CONCURRENCY, async (chunk, i) => {
-          if (this.aborted) throw new Error("Upload aborted");
-          const partNumber = i + 1;
-          const { url: signedUrl } = await this.apiCall('/api/storage/multipart/sign-part', {
-              key, uploadId, partNumber
+          const eTag = await this.uploadToS3(signedUrl, chunk, (loaded) => {
+              chunkProgress.set(i, loaded);
+              updateAggregateProgress();
           });
-          const eTag = await this.uploadToS3(signedUrl, chunk);
+          
+          // Store result
           parts.push({ PartNumber: partNumber, ETag: eTag });
           
-          uploadedSize += chunk.size;
-          const percent = Math.round((uploadedSize / totalSize) * 100);
-          this.options.onProgress?.(percent);
+          // Ensure we marked this chunk as fully done in map (should be already)
+          chunkProgress.set(i, chunk.size);
+          updateAggregateProgress();
       });
-
 
       if (this.aborted) throw new Error("Upload aborted");
       
@@ -197,6 +179,7 @@ export class Uploader {
           uploadId,
           parts,
           filename: this.file.name,
+          contentType: this.file.type || 'application/octet-stream',
           size: this.file.size,
           hash,
           spaceId
@@ -218,6 +201,8 @@ export class Uploader {
   }
 
   private calculateHash(): Promise<string> {
+    this.emitProgress({ status: 'hashing', hashProgress: 0, uploadProgress: 0, progress: 0 });
+    
     return new Promise((resolve, reject) => {
         this.worker = new Worker(new URL('./hash.worker.ts', import.meta.url), { type: 'module' });
         
@@ -235,9 +220,12 @@ export class Uploader {
             } else if (hash) {
                 resolve(hash);
             } else if (progress !== undefined) {
-                // Reporting hash progress as "Preparing..." (can be logged or used)
-                // If we want to reflect in main progress, we can do it here.
-                // console.debug('Hashing:', progress);
+                this.emitProgress({ 
+                   status: 'hashing', 
+                   hashProgress: progress, 
+                   uploadProgress: 0, 
+                   progress: 0 
+               });
             }
         };
 
@@ -261,10 +249,18 @@ export class Uploader {
       return res.json();
   }
 
-  private async uploadToS3(url: string, body: Blob): Promise<string> {
+  private async uploadToS3(url: string, body: Blob, onProgress?: (loaded: number) => void): Promise<string> {
       return new Promise((resolve, reject) => {
           const xhr = new XMLHttpRequest();
           this.activeRequest = xhr;
+          
+          if (onProgress) {
+              xhr.upload.onprogress = (e) => {
+                  if (e.lengthComputable) {
+                     onProgress(e.loaded);
+                  }
+              };
+          }
 
           xhr.open('PUT', url);
           

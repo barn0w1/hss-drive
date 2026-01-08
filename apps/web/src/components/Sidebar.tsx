@@ -56,6 +56,8 @@ export function Sidebar() {
           spaceId: targetSpaceId, 
           file: file,
           progress: 0,
+          hashProgress: 0,
+          uploadProgress: 0,
           status: 'pending',
           targetPath: targetPath
         });

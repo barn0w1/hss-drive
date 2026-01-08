@@ -56,6 +56,8 @@ app.post("/", async (c) => {
  */
 app.delete("/:id", async (c) => {
     const user = c.var.user;
+    if (!user) return c.json({ error: "Unauthorized" }, 401);
+
     const spaceId = c.req.param("id");
     
     // Ensure ownership

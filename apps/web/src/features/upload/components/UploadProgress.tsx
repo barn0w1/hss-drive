@@ -29,22 +29,32 @@ export function UploadProgress() {
 }
 
 function UploadItem({ session }: { session: UploadSession }) {
+  const isHashing = session.status === 'hashing';
+  const progressValue = isHashing ? session.hashProgress : session.uploadProgress;
+  const statusColor = isHashing ? 'bg-purple-600' : 'bg-blue-600';
+  const statusText = isHashing ? 'Hashing...' : 'Uploading...';
+
   return (
     <div className="px-4 py-3 border-b border-gray-100 last:border-0 hover:bg-gray-50">
        <div className="flex items-center gap-3 mb-2">
           <FileText className="w-5 h-5 text-gray-500" />
           <div className="flex-1 min-w-0">
              <p className="text-sm font-medium text-gray-700 truncate">{session.file.name}</p>
-             <p className="text-xs text-gray-400 truncate">{session.targetPath || 'Root'}</p>
-          </div>
-          <div className="text-sm text-gray-500 font-mono">
-             {Math.round(session.progress)}%
+             <div className="flex justify-between items-center text-xs text-gray-400 mt-1">
+                <span className="truncate">{session.targetPath || 'Root'}</span>
+                <div className="flex items-center gap-2">
+                    {isHashing && <Loader2 className="w-3 h-3 animate-spin"/>}
+                    <span className={clsx(isHashing && "text-purple-600 font-medium", !isHashing && "text-blue-600")}>
+                        {statusText} {Math.round(progressValue || 0)}%
+                    </span>
+                </div>
+             </div>
           </div>
        </div>
        <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
           <div 
-             className="h-full bg-blue-600 transition-all duration-300" 
-             style={{ width: `${session.progress}%` }}
+             className={clsx("h-full transition-all duration-300", statusColor)} 
+             style={{ width: `${progressValue}%` }}
           />
        </div>
     </div>

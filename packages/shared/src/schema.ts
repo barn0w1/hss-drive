@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, integer, jsonb, timestamp, uniqueIndex, foreignKey } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, integer, jsonb, timestamp, uniqueIndex, foreignKey, boolean } from 'drizzle-orm/pg-core';
 
 // 0. Auth Tables (Lucia)
 export const users = pgTable('users', {
@@ -42,6 +42,14 @@ export const files = pgTable('files', {
   
   name: text('name').notNull(),
   type: text('type').$type<'file' | 'dir'>().notNull(),
+
+  // Metadata (Denormalized for performance)
+  size: integer('size').default(0).notNull(),
+  mimeType: text('mime_type'),
+  
+  // Status flags
+  isStarred: boolean('is_starred').default(false).notNull(),
+  isTrashed: boolean('is_trashed').default(false).notNull(),
   
   blobHash: text('blob_hash'), // NULL if directory
   
@@ -50,7 +58,7 @@ export const files = pgTable('files', {
   spaceFk: foreignKey({
       columns: [table.spaceId],
       foreignColumns: [spaces.id]
-  }),
+  }).onDelete('cascade'),
   parentFk: foreignKey({
       columns: [table.parentId],
       foreignColumns: [table.id]

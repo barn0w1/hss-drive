@@ -1,6 +1,24 @@
 import { create } from 'zustand';
-import { type Entry } from '@/data';
 import type { UploadSession } from '@/features/upload/types';
+
+export type EntryType = 'file' | 'dir';
+
+export interface Entry {
+  id: string; // UUID
+  parentId: string | null;
+  name: string;
+  type: EntryType;
+  size: number;
+  mimeType?: string;
+  isStarred: boolean;
+  isTrashed: boolean;
+  updatedAt: string;
+}
+
+export interface Breadcrumb {
+    id: string | null; // null for root
+    name: string;
+}
 
 export interface Space {
     id: string;
@@ -27,13 +45,15 @@ interface AuthState {
 interface DriveState extends AuthState {
   // Data
   spaces: Space[];
-  entries: Record<string, Entry[]>; // spaceId -> entries
-  uploads: Record<string, UploadSession>; // uploadId -> session
+  items: Entry[]; // Current folder items
+  uploads: Record<string, UploadSession>;
 
   // UI State
   activeSpaceId: string | null;
-  currentPath: string;
-  selectedPaths: Set<string>;
+  currentFolderId: string | null; 
+  breadcrumbs: Breadcrumb[];
+  
+  selectedIds: Set<string>;
 
   // Actions
   fetchSpaces: () => Promise<void>;
@@ -41,19 +61,24 @@ interface DriveState extends AuthState {
   deleteSpace: (id: string) => Promise<void>;
 
   setActiveSpace: (spaceId: string) => void;
-  setCurrentPath: (path: string) => void;
+  
+  // Folder Navigation
+  openFolder: (folderId: string | null, folderName?: string) => void;
   navigateUp: () => void;
-  toggleSelection: (path: string, multi: boolean) => void;
+  refreshFolder: () => Promise<void>;
+  
+  createFolder: (name: string) => Promise<void>;
+  
+  toggleSelection: (id: string, multi: boolean) => void;
   clearSelection: () => void;
   
   // Upload Actions
   addUpload: (session: UploadSession) => void;
-  updateUploadProgress: (id: string, progress: number) => void;
+  updateUploadProgress: (id: string, updates: Partial<UploadSession>) => void;
   completeUpload: (id: string, hash: string) => void;
   failUpload: (id: string, error: string) => void;
-  addEntry: (spaceId: string, entry: Entry) => void;
-
-  // Computed (helper)
+  
+  // Computed
   getCurrentSpace: () => Space | undefined;
 }
 
@@ -99,22 +124,22 @@ export const useDriveStore = create<DriveState>((set, get) => ({
 
   // Drive Data
   spaces: [],
-  entries: {},
+  items: [],
   uploads: {},
   
   activeSpaceId: null,
-  currentPath: '',
-  selectedPaths: new Set(),
+  currentFolderId: null,
+  breadcrumbs: [{ id: null, name: 'Home' }],
+  selectedIds: new Set(),
 
   fetchSpaces: async () => {
       const res = await fetch('/api/spaces');
       if (res.ok) {
           const { spaces } = await res.json();
           set({ spaces });
-          // Set active space if none or invalid
           const { activeSpaceId } = get();
           if (!activeSpaceId && spaces.length > 0) {
-              set({ activeSpaceId: spaces[0].id });
+              get().setActiveSpace(spaces[0].id);
           }
       }
   },
@@ -135,48 +160,95 @@ export const useDriveStore = create<DriveState>((set, get) => ({
       await get().fetchSpaces();
   },
 
-  setActiveSpace: (spaceId) => set({ 
-    activeSpaceId: spaceId, 
-    currentPath: '', 
-    selectedPaths: new Set() 
-  }),
+  setActiveSpace: (spaceId) => {
+      set({ 
+          activeSpaceId: spaceId, 
+          currentFolderId: null, 
+          breadcrumbs: [{ id: null, name: 'Home' }],
+          selectedIds: new Set()
+      });
+      get().refreshFolder();
+  },
 
-  setCurrentPath: (path) => set({ 
-    currentPath: path, 
-    selectedPaths: new Set() 
-  }),
+  openFolder: (folderId, folderName) => {
+      const { breadcrumbs, activeSpaceId } = get();
+      if (!activeSpaceId) return;
+
+      let newBreadcrumbs = [...breadcrumbs];
+      if (!folderId) {
+          newBreadcrumbs = [{ id: null, name: 'Home' }];
+      } else {
+          const index = newBreadcrumbs.findIndex(b => b.id === folderId);
+          if (index !== -1) {
+              newBreadcrumbs = newBreadcrumbs.slice(0, index + 1);
+          } else {
+              newBreadcrumbs.push({ id: folderId, name: folderName || 'Folder' });
+          }
+      }
+
+      set({ 
+          currentFolderId: folderId, 
+          breadcrumbs: newBreadcrumbs, 
+          selectedIds: new Set() 
+      });
+      get().refreshFolder();
+  },
 
   navigateUp: () => {
-    const { currentPath } = get();
-    if (!currentPath) return; // already at root
-    const parentPath = currentPath.split('/').slice(0, -1).join('/');
-    set({ currentPath: parentPath, selectedPaths: new Set() });
+      const { breadcrumbs } = get();
+      if (breadcrumbs.length <= 1) return;
+      const parent = breadcrumbs[breadcrumbs.length - 2];
+      get().openFolder(parent.id, parent.name);
   },
 
-  toggleSelection: (path, multi) => {
-    const { selectedPaths } = get();
-    const newSet = new Set(multi ? selectedPaths : []);
-    if (newSet.has(path)) {
-      newSet.delete(path);
+  refreshFolder: async () => {
+      const { activeSpaceId, currentFolderId } = get();
+      if (!activeSpaceId) return;
+      
+      const query = currentFolderId ? `?parentId=${currentFolderId}` : '';
+      const res = await fetch(`/api/spaces/${activeSpaceId}/files${query}`);
+      if (res.ok) {
+          const { files } = await res.json();
+          set({ items: files });
+      }
+  },
+
+  createFolder: async (name) => {
+      const { activeSpaceId, currentFolderId } = get();
+      if (!activeSpaceId) return;
+      
+      await fetch(`/api/spaces/${activeSpaceId}/files/folder`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ name, parentId: currentFolderId })
+      });
+      get().refreshFolder();
+  },
+
+  toggleSelection: (id, multi) => {
+    const { selectedIds } = get();
+    const newSet = new Set(multi ? selectedIds : []);
+    if (newSet.has(id)) {
+      newSet.delete(id);
     } else {
-      newSet.add(path);
+      newSet.add(id);
     }
-    set({ selectedPaths: newSet });
+    set({ selectedIds: newSet });
   },
 
-  clearSelection: () => set({ selectedPaths: new Set() }),
+  clearSelection: () => set({ selectedIds: new Set() }),
 
   addUpload: (session) => set((state) => ({
     uploads: { ...state.uploads, [session.id]: session }
   })),
 
-  updateUploadProgress: (id, progress) => set((state) => {
+  updateUploadProgress: (id, updates) => set((state) => {
      const session = state.uploads[id];
      if (!session) return {};
      return {
         uploads: {
             ...state.uploads,
-            [id]: { ...session, progress }
+            [id]: { ...session, ...updates }
         }
      };
   }),
@@ -201,18 +273,6 @@ export const useDriveStore = create<DriveState>((set, get) => ({
            [id]: { ...session, status: 'error', error }
        }
     };
-  }),
-
-  addEntry: (spaceId, entry) => set((state) => {
-      const spaceEntries = state.entries[spaceId] || [];
-      // Remove existing entry with same path if it exists (upsert)
-      const filtered = spaceEntries.filter(e => e.path !== entry.path);
-      return {
-          entries: {
-              ...state.entries,
-              [spaceId]: [...filtered, entry]
-          }
-      };
   }),
 
   getCurrentSpace: () => {

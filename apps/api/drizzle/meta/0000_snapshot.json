@@ -1,5 +1,5 @@
 {
-  "id": "a3ecd192-6319-4898-aeb6-1b0ccc3d380c",
+  "id": "9520c5c4-b848-4a0d-88c2-79ef4bed9a20",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -77,6 +77,33 @@
           "primaryKey": false,
           "notNull": true
         },
+        "size": {
+          "name": "size",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "mime_type": {
+          "name": "mime_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_starred": {
+          "name": "is_starred",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "is_trashed": {
+          "name": "is_trashed",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
         "blob_hash": {
           "name": "blob_hash",
           "type": "text",
@@ -131,7 +158,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
+          "onDelete": "cascade",
           "onUpdate": "no action"
         },
         "files_parent_id_files_id_fk": {
