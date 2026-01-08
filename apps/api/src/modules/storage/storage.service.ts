@@ -1,5 +1,7 @@
 import { S3Client, CreateMultipartUploadCommand, UploadPartCommand, CompleteMultipartUploadCommand, AbortMultipartUploadCommand, GetObjectCommand, PutObjectCommand, HeadObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { NodeHttpHandler } from "@smithy/node-http-handler";
+import https from "https";
 
 // Cloudflare R2 / S3 Client Initialization
 const s3Client = new S3Client({
@@ -9,6 +11,15 @@ const s3Client = new S3Client({
         accessKeyId: process.env.S3_ACCESS_KEY_ID!,
         secretAccessKey: process.env.S3_SECRET_ACCESS_KEY!,
     },
+    maxAttempts: 5, // Retry more aggressively on transient failures
+    requestHandler: new NodeHttpHandler({
+        connectionTimeout: 5000,
+        requestTimeout: 60000,
+        httpsAgent: new https.Agent({
+            maxSockets: 500, // Increase max concurrent connections (default is often 50 or Infinity but sometimes restricted)
+            keepAlive: true,
+        }),
+    }),
 });
 
 const BUCKET_NAME = process.env.S3_BUCKET_NAME!;

@@ -52,19 +52,19 @@ export function Sidebar() {
         
         {/* Main Nav */}
         <div>
-            <div className="px-3 mb-1.5 text-[10px] font-semibold text-[#6B7280] uppercase tracking-wider flex items-center gap-2">
+            <div className="px-3 mb-2 text-[11px] font-semibold text-[#6B7280] uppercase tracking-wider flex items-center gap-2">
                 Menu
             </div>
             <button 
                 onClick={() => setActiveSpace(null)}
                 className={clsx(
-                  "w-full flex items-center gap-2.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-150",
+                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[15px] font-medium transition-all duration-150",
                   !activeSpaceId 
                     ? "bg-white text-[#111827] shadow-sm ring-1 ring-[#E5E7EB]" 
                     : "text-[#4B5563] hover:bg-[#F3F4F6] hover:text-[#111827]"
                 )}
             >
-              <LayoutGrid className="w-4 h-4 text-gray-400" />
+              <LayoutGrid className="w-5 h-5 text-gray-400" />
               Dashboard
             </button>
         </div>
@@ -72,23 +72,23 @@ export function Sidebar() {
         {/* Pinned Spaces */}
         {pinnedSpaces.length > 0 && (
             <div>
-                 <div className="px-3 mb-1.5 text-[10px] font-semibold text-[#6B7280] uppercase tracking-wider flex items-center gap-2">
+                 <div className="px-3 mb-2 text-[11px] font-semibold text-[#6B7280] uppercase tracking-wider flex items-center gap-2">
                     Pinned
                 </div>
-                <div className="space-y-0.5">
+                <div className="space-y-1">
                     {pinnedSpaces.map(space => (
                         <button
                             key={space.id}
                             onClick={() => setActiveSpace(space.id)}
                             className={clsx(
-                                "w-full flex items-center gap-2.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-150 group",
+                                "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[15px] font-medium transition-all duration-150 group",
                                 activeSpaceId === space.id
                                     ? "bg-white text-[#111827] shadow-sm ring-1 ring-[#E5E7EB]"
                                     : "text-[#4B5563] hover:bg-[#F3F4F6] hover:text-[#111827]"
                             )}
                         >
                             <HardDrive className={clsx(
-                                "w-4 h-4 transition-colors",
+                                "w-5 h-5 transition-colors",
                                 activeSpaceId === space.id ? "text-blue-500" : "text-gray-400 group-hover:text-gray-600"
                             )} />
                             <span className="truncate">{space.name}</span>
@@ -100,14 +100,14 @@ export function Sidebar() {
 
         {/* All Spaces (with Create Option) */}
         <div>
-            <div className="px-3 mb-1.5 flex items-center justify-between group cursor-pointer" onClick={() => setIsCreatingSpace(true)}>
-                <div className="text-[10px] font-semibold text-[#6B7280] uppercase tracking-wider flex items-center gap-2">
+            <div className="px-3 mb-2 flex items-center justify-between group cursor-pointer" onClick={() => setIsCreatingSpace(true)}>
+                <div className="text-[11px] font-semibold text-[#6B7280] uppercase tracking-wider flex items-center gap-2">
                     Spaces
                 </div>
-                <Plus className="w-3 h-3 text-gray-400 hover:text-[#111827] transition-colors opacity-0 group-hover:opacity-100" />
+                <Plus className="w-4 h-4 text-gray-400 hover:text-[#111827] transition-colors opacity-0 group-hover:opacity-100" />
             </div>
 
-            <div className="space-y-0.5">
+            <div className="space-y-1">
                 {/* Create Space Input */}
                 {isCreatingSpace && (
                     <form onSubmit={handleCreateSpace} className="px-1 mb-1">
@@ -115,7 +115,7 @@ export function Sidebar() {
                             autoFocus
                             type="text"
                             placeholder="Space name..."
-                            className="w-full text-sm px-2.5 py-1.5 rounded-md border border-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-100 bg-white shadow-sm"
+                            className="w-full text-[15px] px-3 py-2 rounded-lg border border-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-100 bg-white shadow-sm"
                             value={newSpaceName}
                             onChange={(e) => setNewSpaceName(e.target.value)}
                             onBlur={() => !newSpaceName && setIsCreatingSpace(false)}
@@ -128,14 +128,14 @@ export function Sidebar() {
                         key={space.id}
                         onClick={() => setActiveSpace(space.id)}
                         className={clsx(
-                            "w-full flex items-center gap-2.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-150 group",
+                            "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[15px] font-medium transition-all duration-150 group",
                             activeSpaceId === space.id
                                 ? "bg-white text-[#111827] shadow-sm ring-1 ring-[#E5E7EB]"
                                 : "text-[#4B5563] hover:bg-[#F3F4F6] hover:text-[#111827]"
                         )}
                     >
                         <HardDrive className={clsx(
-                            "w-4 h-4 transition-colors",
+                            "w-5 h-5 transition-colors",
                             activeSpaceId === space.id ? "text-blue-500" : "text-gray-400 group-hover:text-gray-600"
                         )} />
                         <span className="truncate">{space.name}</span>

@@ -24,30 +24,28 @@ export function UploadGhostRow({ session }: { session: UploadSession }) {
     }, [session.status]);
 
     return (
-        <tr className="h-[52px] bg-white border-b border-[#F9FAFB] opacity-60 animate-pulse">
-            <td className="px-6 py-2">
+        <tr className="h-[40px] bg-white border-b border-[#F9FAFB] opacity-60 animate-pulse">
+            <td className="px-6 py-1.5">
                 <div className="flex items-center gap-3 grayscale">
                     {getGhostIcon(session.file.name)}
-                    <span className="font-medium text-sm truncate max-w-[300px] text-[#111827]">
+                    <span className="font-medium text-[13.5px] truncate max-w-[300px] text-[#111827]">
                         {session.file.name}
                     </span>
                 </div>
             </td>
-            <td className="px-6 py-2">
+            <td className="px-6 py-1.5">
                 <div className="flex items-center gap-2">
                     <div className="w-5 h-5 rounded-full bg-[#E5E7EB] flex items-center justify-center text-[10px] font-bold text-[#6B7280]">
                             Me
                     </div>
-                    <span className="text-sm text-[#6B7280]">Me</span>
+                    <span className="text-[13px] text-[#6B7280]">Me</span>
                 </div>
             </td>
-            <td className="px-6 py-2 text-sm text-[#6B7280]">
+            <td className="px-6 py-1.5 text-[13px] text-[#6B7280]">
                 {statusText}
             </td>
-            <td className="px-6 py-2 text-sm text-[#6B7280] text-right font-mono">
+            <td className="px-6 py-1.5 text-[13px] text-[#6B7280] text-right font-mono">
                 ... 
-            </td>
-            <td className="px-6 py-2 text-right">
             </td>
         </tr>
     );

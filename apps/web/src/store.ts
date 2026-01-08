@@ -56,12 +56,16 @@ interface DriveState extends AuthState {
   pinnedSpaceIds: string[];
   
   selectedIds: Set<string>;
+  isInspectorOpen: boolean;
 
   // Actions
   fetchSpaces: () => Promise<void>;
   createSpace: (name: string) => Promise<void>;
   deleteSpace: (id: string) => Promise<void>;
   toggleSpacePin: (id: string) => void;
+
+  toggleInspector: () => void;
+  setInspectorOpen: (open: boolean) => void;
 
   setActiveSpace: (spaceId: string | null) => void;
   
@@ -134,6 +138,7 @@ export const useDriveStore = create<DriveState>((set, get) => ({
   currentFolderId: null,
   breadcrumbs: [{ id: null, name: 'Home' }],
   selectedIds: new Set(),
+  isInspectorOpen: false,
   pinnedSpaceIds: JSON.parse(localStorage.getItem('hss_pinned_spaces') || '[]'),
 
   fetchSpaces: async () => {
@@ -177,12 +182,16 @@ export const useDriveStore = create<DriveState>((set, get) => ({
     return { pinnedSpaceIds: newPins };
   }),
 
+  toggleInspector: () => set((state) => ({ isInspectorOpen: !state.isInspectorOpen })),
+  setInspectorOpen: (open) => set({ isInspectorOpen: open }),
+
   setActiveSpace: (spaceId) => {
       set({ 
           activeSpaceId: spaceId, 
           currentFolderId: null, 
           breadcrumbs: [{ id: null, name: 'Home' }],
-          selectedIds: new Set()
+          selectedIds: new Set(),
+          isInspectorOpen: false 
       });
       get().refreshFolder();
   },
@@ -244,11 +253,26 @@ export const useDriveStore = create<DriveState>((set, get) => ({
 
   toggleSelection: (id, multi) => {
     const { selectedIds } = get();
-    const newSet = new Set(multi ? selectedIds : []);
-    if (newSet.has(id)) {
-      newSet.delete(id);
+    // Logic specific update: 
+    // If multi is true (cmd/ctrl), toggle ID.
+    // If multi is false (standard click), replace set with just ID.
+    // NOTE: The previous logic was "if multi? use old : empty".
+    
+    // Proper multi-select logic:
+    let newSet: Set<string>;
+    
+    if (multi) {
+        newSet = new Set(selectedIds);
+        if (newSet.has(id)) {
+            newSet.delete(id);
+        } else {
+            newSet.add(id);
+        }
     } else {
-      newSet.add(id);
+        // Exclusive select
+        // If clicking already selected item in a multi-set? Usually we still reset unless it's a drag start, 
+        // but for now simple exclusive click.
+        newSet = new Set([id]);
     }
     set({ selectedIds: newSet });
   },

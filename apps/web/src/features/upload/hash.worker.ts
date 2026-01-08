@@ -1,6 +1,8 @@
 import { createSHA256 } from 'hash-wasm';
 
-const CHUNK_SIZE = 10 * 1024 * 1024; // 10MB chunk for hashing buffer
+// 20MB is a sweet spot for modern CPUs/Memory. 
+// Too small = overhead. Too big = UI stutter (even in worker due to main thread memory allocation pressure).
+const CHUNK_SIZE = 20 * 1024 * 1024; 
 
 self.onmessage = async (e: MessageEvent<{ file: File }>) => {
   const { file } = e.data;
@@ -11,25 +13,28 @@ self.onmessage = async (e: MessageEvent<{ file: File }>) => {
   }
 
   try {
-    const reader = file.stream().getReader();
     const hasher = await createSHA256();
     hasher.init();
 
-    let processedSize = 0;
     const totalSize = file.size;
+    let offset = 0;
 
-    while (true) {
-      const { done, value } = await reader.read();
+    while (offset < totalSize) {
+      // Slice the file manually to control memory usage
+      const end = Math.min(offset + CHUNK_SIZE, totalSize);
+      const chunk = file.slice(offset, end);
       
-      if (done) break;
+      // Read directly as ArrayBuffer (Fastest modern method)
+      const buffer = await chunk.arrayBuffer();
       
-      // value is a Uint8Array
-      hasher.update(value);
-      processedSize += value.length;
+      // Feed Uint8Array view to WASM
+      hasher.update(new Uint8Array(buffer));
+      
+      offset = end;
 
       // Report progress
       self.postMessage({ 
-        progress: (processedSize / totalSize) * 100 
+        progress: (offset / totalSize) * 100 
       });
     }
 

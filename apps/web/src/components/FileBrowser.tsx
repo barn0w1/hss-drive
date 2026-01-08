@@ -12,13 +12,16 @@ import {
   User as UserIcon,
   LayoutGrid,
   Plus,
-  FolderPlus
+  FolderPlus,
+  Info
 } from 'lucide-react';
 import { useDriveStore, Entry, Space } from '@/store';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { Uploader } from '@/features/upload/Uploader';
 import clsx from 'clsx';
 import { UploadGhostRow } from './UploadGhostRow';
+import { FileActionMenu } from './FileActionMenu';
+import { SelectionBar } from './SelectionBar';
 
 function FileIcon({ item }: { item: Entry }) {
     if (item.type === 'dir') return <Folder className="w-5 h-5 text-blue-500 fill-blue-500/10" />;
@@ -68,11 +71,14 @@ export function FileBrowser() {
   const pinnedSpaceIds = useDriveStore((state) => state.pinnedSpaceIds);
   const selectedIds = useDriveStore((state) => state.selectedIds);
   const uploads = useDriveStore((state) => state.uploads);
+  const isInspectorOpen = useDriveStore((state) => state.isInspectorOpen);
   
   const openFolder = useDriveStore((state) => state.openFolder);
   const toggleSelection = useDriveStore((state) => state.toggleSelection);
+  const clearSelection = useDriveStore((state) => state.clearSelection);
   const setActiveSpace = useDriveStore((state) => state.setActiveSpace);
   const toggleSpacePin = useDriveStore((state) => state.toggleSpacePin);
+  const toggleInspector = useDriveStore((state) => state.toggleInspector); // New action
   
   // Actions
   const currentFolderId = useDriveStore((state) => state.currentFolderId);
@@ -100,7 +106,23 @@ export function FileBrowser() {
   const handleDoubleClick = (item: Entry) => {
     if (item.type === 'dir') {
       openFolder(item.id, item.name);
+    } else {
+        // Implement File Preview
+        alert(`Previewing file: ${item.name}`); // Placeholder for now
     }
+  };
+
+  const handeFileAction = (action: string, item: Entry) => {
+      console.log('Action:', action, 'Item:', item.name);
+      // Implementation of actions will go here
+  };
+
+  const handleSelectionAction = (action: string) => {
+      console.log('Selection Action:', action);
+      if (action === 'info') {
+          toggleInspector();
+      }
+      // Actions like 'download', 'delete' etc
   };
 
   const formatSize = (bytes: number) => {
@@ -265,45 +287,33 @@ export function FileBrowser() {
             <button 
                 onClick={handleCreateFolder}
                 className="flex items-center gap-2 px-3 py-1.5 bg-white border border-[#E5E7EB] text-[#374151] rounded-md text-sm font-medium hover:bg-[#F9FAFB] transition-colors"
+                title="Create New Folder"
             >
                 <FolderPlus className="w-4 h-4" /> 
                 <span className="hidden sm:inline">New Folder</span>
             </button>
             
-            <div className="h-4 w-px bg-[#E5E7EB] mx-2" />
+            <div className="h-4 w-px bg-[#E5E7EB] mx-1" />
 
-            {selectedIds.size > 0 ? (
-               <div className="flex items-center gap-1">
-                  <span className="text-sm font-medium text-[#2563EB] mr-2">{selectedIds.size} selected</span>
-                  
-                  <button className="p-1.5 text-[#6B7280] hover:text-[#111827] hover:bg-[#F3F4F6] rounded-md transition-colors" title="Download">
-                     <Download className="w-4 h-4" />
-                  </button>
-                  <button className="p-1.5 text-[#6B7280] hover:text-[#111827] hover:bg-[#F3F4F6] rounded-md transition-colors" title="Rename">
-                     <Edit2 className="w-4 h-4" />
-                  </button>
-                  <button className="p-1.5 text-[#6B7280] hover:text-[#EF4444] hover:bg-[#FEF2F2] rounded-md transition-colors" title="Delete">
-                     <Trash className="w-4 h-4" />
-                  </button>
-               </div>
-            ) : (
-                <div className="text-xs text-[#9CA3AF] font-medium px-2">
-                    {items.length} items
-                </div>
-            )}
+            {/* Selection Info (Count only) if Bar is absent, or maybe remove entirely? 
+                User requested: "Remove any file-specific action buttons from here."
+                We already have SidebarWidget for progress.
+                We will remove the old selected state UI from here.
+            */}
          </div>
       </div>
+
+      <SelectionBar selectedIds={selectedIds} onClear={clearSelection} onAction={handleSelectionAction} />
 
       {/* Table */}
       <div className="flex-1 overflow-auto">
         <table className="w-full text-left border-collapse">
-          <thead className="bg-[#F9FAFB] sticky top-0 z-10 text-[10px] font-semibold text-[#6B7280] uppercase tracking-wider backdrop-blur-md">
+          <thead className="bg-[#F9FAFB] sticky top-0 z-10 text-[11px] font-semibold text-[#6B7280] uppercase tracking-wider backdrop-blur-md">
             <tr>
-              <th className="px-6 py-3 border-b border-[#E5E7EB] min-w-[300px] font-medium">Name</th>
-              <th className="px-6 py-3 border-b border-[#E5E7EB] w-[180px] font-medium">Owner</th>
-              <th className="px-6 py-3 border-b border-[#E5E7EB] w-[180px] font-medium">Date Modified</th>
-              <th className="px-6 py-3 border-b border-[#E5E7EB] w-[120px] text-right font-medium">Size</th>
-              <th className="px-6 py-3 border-b border-[#E5E7EB] w-[60px]"></th>
+              <th className="px-6 py-2 border-b border-[#E5E7EB] min-w-[300px] font-medium">Name</th>
+              <th className="px-6 py-2 border-b border-[#E5E7EB] w-[180px] font-medium">Owner</th>
+              <th className="px-6 py-2 border-b border-[#E5E7EB] w-[180px] font-medium">Date Modified</th>
+              <th className="px-6 py-2 border-b border-[#E5E7EB] w-[120px] text-right font-medium">Size</th>
             </tr>
           </thead>
           <tbody className="bg-white">
@@ -314,7 +324,7 @@ export function FileBrowser() {
 
             {items.length === 0 && activeUploadsInCurrentView.length === 0 ? (
                <tr>
-                  <td colSpan={5} className="py-32 text-center text-[#9CA3AF]">
+                  <td colSpan={4} className="py-32 text-center text-[#9CA3AF]">
                       <div className="flex flex-col items-center justify-center">
                           <div className="w-12 h-12 bg-[#F9FAFB] rounded-full flex items-center justify-center mb-4 border border-[#F3F4F6]">
                               <Folder className="w-6 h-6 opacity-20" />
@@ -330,41 +340,36 @@ export function FileBrowser() {
                 onClick={(e) => handleRowClick(e, item.id)}
                 onDoubleClick={() => handleDoubleClick(item)}
                 className={clsx(
-                  "group transition-colors cursor-pointer select-none h-[52px]",
+                  "group transition-colors cursor-pointer select-none h-[40px]",
                   selectedIds.has(item.id) 
                     ? "bg-[#EFF6FF]" 
                     : "hover:bg-[#F9FAFB] border-b border-[#F9FAFB] last:border-0"
                 )}
               >
-                <td className="px-6 py-2">
+                <td className="px-6 py-1.5">
                   <div className="flex items-center gap-3">
                     <FileIcon item={item} />
                     <span className={clsx(
-                        "font-medium text-sm truncate max-w-[300px]",
+                        "font-medium text-[13.5px] truncate max-w-[300px]",
                         selectedIds.has(item.id) ? "text-[#1D4ED8]" : "text-[#111827]"
                     )}>
                         {item.name}
                     </span>
                   </div>
                 </td>
-                <td className="px-6 py-2">
+                <td className="px-6 py-1.5">
                     <div className="flex items-center gap-2">
                         <div className="w-5 h-5 rounded-full bg-[#E5E7EB] flex items-center justify-center text-[10px] font-bold text-[#6B7280]">
                              Me
                         </div>
-                        <span className="text-sm text-[#6B7280]">Me</span>
+                        <span className="text-[13px] text-[#6B7280]">Me</span>
                     </div>
                 </td>
-                <td className="px-6 py-2 text-sm text-[#6B7280]">
+                <td className="px-6 py-1.5 text-[13px] text-[#6B7280]">
                     {new Date(item.updatedAt).toLocaleDateString()}
                 </td>
-                <td className="px-6 py-2 text-sm text-[#6B7280] text-right font-mono">
+                <td className="px-6 py-1.5 text-[13px] text-[#6B7280] text-right font-mono">
                     {item.type === 'dir' ? '-' : formatSize(item.size)}
-                </td>
-                <td className="px-6 py-2 text-right opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button className="p-1 hover:bg-[#E5E7EB] rounded text-[#9CA3AF] hover:text-[#4B5563]">
-                        <MoreVertical className="w-4 h-4" />
-                    </button>
                 </td>
               </tr>
             ))}

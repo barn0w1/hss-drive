@@ -14,6 +14,7 @@
     "@hono/node-server": "^1.19.7",
     "@hss/shared": "workspace:*",
     "@lucia-auth/adapter-drizzle": "^1.1.0",
+    "@smithy/node-http-handler": "^4.4.7",
     "arctic": "^3.7.0",
     "dotenv": "^17.2.3",
     "drizzle-orm": "^0.45.1",

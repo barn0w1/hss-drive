@@ -11,6 +11,7 @@ function App() {
   const isAuthenticated = useDriveStore(s => s.isAuthenticated);
   const user = useDriveStore(s => s.user);
   const uploads = useDriveStore(s => s.uploads);
+  const isInspectorOpen = useDriveStore(s => s.isInspectorOpen);
   
   // Initial Auth Check
   const [init, setInit] = useState(true);
@@ -62,7 +63,7 @@ function App() {
              </div>
              
              {/* Pane C: Inspector (conditionally rendered by component itself) */}
-             <Inspector />
+             {isInspectorOpen && <Inspector />}
          </div>
       </main>
     </div>

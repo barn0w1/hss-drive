@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 export function Inspector() {
   const selectedIds = useDriveStore((state) => state.selectedIds);
   const items = useDriveStore((state) => state.items);
-  const clearSelection = useDriveStore((state) => state.clearSelection);
+  const toggleInspector = useDriveStore((state) => state.toggleInspector);
   const spaces = useDriveStore((state) => state.spaces);
   const activeSpaceId = useDriveStore((state) => state.activeSpaceId);
 
@@ -27,8 +27,29 @@ export function Inspector() {
       }
   };
 
+  /**
+   * If selection is empty, we show a default "Space Info" or "No Selection" view
+   * rather than returning null. This keeps the panel structure stable if it's open.
+   */
   if (selectedIds.size === 0) {
-      return null;
+      // Show generic space info or placeholder
+       return (
+          <aside className="w-[300px] border-l border-[#E5E7EB] bg-white flex flex-col h-full animate-in slide-in-from-right-2 duration-300 z-30">
+              <div className="flex justify-between items-center px-4 py-3 border-b border-[#F9FAFB]">
+                  <h3 className="text-xs font-semibold text-[#6B7280] uppercase tracking-wide">Info Panel</h3>
+                  <button onClick={toggleInspector} className="p-1 hover:bg-[#F3F4F6] rounded text-[#9CA3AF] hover:text-[#4B5563]">
+                      <X className="w-3.5 h-3.5" />
+                  </button>
+              </div>
+              <div className="flex-1 flex flex-col items-center justify-center text-center p-6 bg-gray-50/50">
+                  <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center mb-3 shadow-sm border border-gray-100">
+                      <File className="w-6 h-6 text-gray-300" />
+                  </div>
+                  <p className="text-sm font-medium text-gray-900">No Item Selected</p>
+                  <p className="text-xs text-gray-500 mt-1 max-w-[200px]">Select a file or folder to view its properties and metadata.</p>
+              </div>
+          </aside>
+       );
   }
 
   // Multi-select view (Soft Inspector)
@@ -37,7 +58,7 @@ export function Inspector() {
           <aside className="w-[300px] border-l border-[#E5E7EB] bg-white flex flex-col h-full animate-in slide-in-from-right-2 duration-300 z-30">
               <div className="flex justify-between items-center px-4 py-3 border-b border-[#F9FAFB]">
                   <h3 className="text-xs font-semibold text-[#6B7280] uppercase tracking-wide">Selection</h3>
-                  <button onClick={clearSelection} className="p-1 hover:bg-[#F3F4F6] rounded text-[#9CA3AF] hover:text-[#4B5563]">
+                  <button onClick={toggleInspector} className="p-1 hover:bg-[#F3F4F6] rounded text-[#9CA3AF] hover:text-[#4B5563]">
                       <X className="w-3.5 h-3.5" />
                   </button>
               </div>
@@ -61,7 +82,7 @@ export function Inspector() {
       {/* Header with Close */}
       <div className="flex justify-between items-center px-4 py-3 border-b border-[#F9FAFB]">
            <span className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-wider">Details</span>
-           <button onClick={clearSelection} className="p-1 hover:bg-[#F3F4F6] rounded text-[#9CA3AF] hover:text-[#4B5563] transition-colors">
+           <button onClick={toggleInspector} className="p-1 hover:bg-[#F3F4F6] rounded text-[#9CA3AF] hover:text-[#4B5563] transition-colors">
                <X className="w-3.5 h-3.5" />
            </button>
       </div>
