@@ -222,10 +222,10 @@ export const useDriveStore = create<DriveState>((set, get) => ({
       if (!activeSpaceId) return;
       
       const query = currentFolderId ? `?parentId=${currentFolderId}` : '';
-      const res = await fetch(`/api/spaces/${activeSpaceId}/files${query}`);
+      const res = await fetch(`/api/spaces/${activeSpaceId}/nodes${query}`);
       if (res.ok) {
-          const { files } = await res.json();
-          set({ items: files });
+          const { nodes } = await res.json();
+          set({ items: nodes });
       }
   },
 
@@ -233,7 +233,7 @@ export const useDriveStore = create<DriveState>((set, get) => ({
       const { activeSpaceId, currentFolderId } = get();
       if (!activeSpaceId) return;
       
-      await fetch(`/api/spaces/${activeSpaceId}/files/folder`, {
+      await fetch(`/api/spaces/${activeSpaceId}/nodes/folder`, {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({ name, parentId: currentFolderId })

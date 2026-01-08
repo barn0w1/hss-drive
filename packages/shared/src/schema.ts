@@ -34,8 +34,8 @@ export const blobs = pgTable('blobs', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
-// 3. Files (Tree Structure & Metadata)
-export const files = pgTable('files', {
+// 3. Nodes (Tree Structure & Metadata - Files and Folders)
+export const nodes = pgTable('nodes', {
   id: uuid('id').defaultRandom().primaryKey(),
   spaceId: uuid('space_id').notNull(),
   parentId: uuid('parent_id'), 

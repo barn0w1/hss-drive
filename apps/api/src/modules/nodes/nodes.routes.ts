@@ -1,58 +1,58 @@
 import { Hono } from "hono";
 import { AppBindings } from "../../lib/context.js";
 import { db } from "../../db/index.js";
-import { files } from "@hss/shared"; 
+import { nodes } from "@hss/shared"; 
 import { eq, and, isNull, desc, asc } from "drizzle-orm";
 
 const app = new Hono<AppBindings>();
 
 /**
- * List files in a space
- * GET /spaces/:spaceId/files
+ * List nodes (files/dirs) in a space
+ * GET /spaces/:spaceId/nodes
  * Query: parentId (optional), view ('trash', 'starred', 'recent')
  */
-app.get("/spaces/:spaceId/files", async (c) => {
+app.get("/spaces/:spaceId/nodes", async (c) => {
     const spaceId = c.req.param("spaceId");
     const parentId = c.req.query("parentId") || null;
     const view = c.req.query("view"); 
 
-    const conditions = [eq(files.spaceId, spaceId)];
+    const conditions = [eq(nodes.spaceId, spaceId)];
 
     if (view === 'trash') {
-        conditions.push(eq(files.isTrashed, true));
+        conditions.push(eq(nodes.isTrashed, true));
     } else if (view === 'starred') {
-        conditions.push(eq(files.isStarred, true));
-        conditions.push(eq(files.isTrashed, false));
+        conditions.push(eq(nodes.isStarred, true));
+        conditions.push(eq(nodes.isTrashed, false));
     } else if (view === 'recent') {
-         conditions.push(eq(files.isTrashed, false));
+         conditions.push(eq(nodes.isTrashed, false));
          // Sort by updated desc implies recent
     } else {
          // Browse Mode
-         conditions.push(eq(files.isTrashed, false));
+         conditions.push(eq(nodes.isTrashed, false));
          if (parentId) {
-             conditions.push(eq(files.parentId, parentId));
+             conditions.push(eq(nodes.parentId, parentId));
          } else {
-             conditions.push(isNull(files.parentId));
+             conditions.push(isNull(nodes.parentId));
          }
     }
 
-    const result = await db.query.files.findMany({
+    const result = await db.query.nodes.findMany({
         where: and(...conditions),
-        orderBy: [asc(files.type), desc(files.updatedAt)], // Type: 'dir' < 'file' so dirs first
+        orderBy: [asc(nodes.type), desc(nodes.updatedAt)], // Type: 'dir' < 'file' so dirs first
     });
 
-    return c.json({ files: result });
+    return c.json({ nodes: result });
 });
 
 /**
- * Create a folder
- * POST /spaces/:spaceId/files/folder
+ * Create a folder (directory node)
+ * POST /spaces/:spaceId/nodes/folder
  */
-app.post("/spaces/:spaceId/files/folder", async (c) => {
+app.post("/spaces/:spaceId/nodes/folder", async (c) => {
     const spaceId = c.req.param("spaceId");
     const { name, parentId } = await c.req.json();
     
-    const [newFolder] = await db.insert(files).values({
+    const [newFolder] = await db.insert(nodes).values({
         spaceId,
         parentId: parentId || null,
         name: name || 'Untitled Folder',
@@ -60,14 +60,14 @@ app.post("/spaces/:spaceId/files/folder", async (c) => {
         size: 0
     }).returning();
     
-    return c.json({ folder: newFolder });
+    return c.json({ node: newFolder });
 });
 
 /**
- * Update file/folder (Rename, Move, Star, Trash)
- * PATCH /files/:id
+ * Update node (Rename, Move, Star, Trash)
+ * PATCH /nodes/:id
  */
-app.patch("/files/:id", async (c) => {
+app.patch("/nodes/:id", async (c) => {
     const id = c.req.param("id");
     const body = await c.req.json();
     
@@ -79,21 +79,21 @@ app.patch("/files/:id", async (c) => {
     
     updates.updatedAt = new Date(); // Touch
 
-    const [updated] = await db.update(files)
+    const [updated] = await db.update(nodes)
         .set(updates)
-        .where(eq(files.id, id))
+        .where(eq(nodes.id, id))
         .returning();
         
-    return c.json({ file: updated });
+    return c.json({ node: updated });
 });
 
 /**
  * Permanently Delete
- * DELETE /files/:id
+ * DELETE /nodes/:id
  */
-app.delete("/files/:id", async (c) => {
+app.delete("/nodes/:id", async (c) => {
     const id = c.req.param("id");
-    await db.delete(files).where(eq(files.id, id));
+    await db.delete(nodes).where(eq(nodes.id, id));
     return c.json({ success: true, id });
 });
 

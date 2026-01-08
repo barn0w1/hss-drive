@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { AppBindings } from "../../lib/context.js";
 import { storageService } from "./storage.service.js";
 import { db } from "../../db/index.js";
-import { files, blobs, spaces, UPLOAD_CONFIG } from "@hss/shared"; 
+import { nodes, blobs, spaces, UPLOAD_CONFIG } from "@hss/shared"; 
 import { eq, and } from "drizzle-orm";
 import { authMiddleware } from "../auth/auth.guard.js";
 
@@ -168,7 +168,7 @@ app.post("/multipart/complete", async (c) => {
              }
         }
 
-        const [newFile] = await db.insert(files).values({
+        const [newNode] = await db.insert(nodes).values({
              name: filename,
              blobHash: hash,
              spaceId: targetSpaceId,
@@ -176,7 +176,7 @@ app.post("/multipart/complete", async (c) => {
              parentId: parentId || null
         }).returning();
         
-        return c.json({ success: true, blobId: hash, fileId: newFile.id });
+        return c.json({ success: true, blobId: hash, fileId: newNode.id });
 
     } catch (e) {
         c.var.logger.error(e, "Complete Upload Error");
