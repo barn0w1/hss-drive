@@ -12,7 +12,8 @@ export interface UploadSession {
 }
 
 export interface UploaderOptions {
-  chunkSize?: number; // Default 128MB
+  spaceId?: string; // Target space
+  chunkSize?: number; // Default from shared config (e.g. 128MB)
   onProgress?: (progress: number) => void;
   onComplete?: (hash: string) => void;
   onError?: (error: Error) => void;

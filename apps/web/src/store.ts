@@ -1,19 +1,45 @@
 import { create } from 'zustand';
-import { entries as initialEntries, spaces as initialSpaces, type Entry, type Space } from '@/data';
+import { type Entry } from '@/data';
 import type { UploadSession } from '@/features/upload/types';
 
-interface DriveState {
+export interface Space {
+    id: string;
+    name: string;
+    ownerId: string;
+    meta?: any;
+    createdAt: string;
+}
+
+export interface User {
+    id: string;
+    username: string;
+    avatar?: string;
+}
+
+interface AuthState {
+    user: User | null;
+    isAuthenticated: boolean;
+    login: (username: string) => Promise<void>;
+    logout: () => Promise<void>;
+    checkAuth: () => Promise<void>;
+}
+
+interface DriveState extends AuthState {
   // Data
   spaces: Space[];
   entries: Record<string, Entry[]>; // spaceId -> entries
   uploads: Record<string, UploadSession>; // uploadId -> session
 
   // UI State
-  activeSpaceId: string;
+  activeSpaceId: string | null;
   currentPath: string;
   selectedPaths: Set<string>;
 
   // Actions
+  fetchSpaces: () => Promise<void>;
+  createSpace: (name: string) => Promise<void>;
+  deleteSpace: (id: string) => Promise<void>;
+
   setActiveSpace: (spaceId: string) => void;
   setCurrentPath: (path: string) => void;
   navigateUp: () => void;
@@ -32,13 +58,82 @@ interface DriveState {
 }
 
 export const useDriveStore = create<DriveState>((set, get) => ({
-  spaces: initialSpaces,
-  entries: initialEntries,
+  // Auth State
+  user: null,
+  isAuthenticated: false,
+  
+  login: async (username: string) => {
+      const res = await fetch('/api/auth/dev-login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username })
+      });
+      if (res.ok) {
+          const { user } = await res.json();
+          set({ user, isAuthenticated: true });
+          await get().fetchSpaces();
+      } else {
+          throw new Error('Login failed');
+      }
+  },
+
+  logout: async () => {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      set({ user: null, isAuthenticated: false, spaces: [], activeSpaceId: null });
+  },
+
+  checkAuth: async () => {
+      try {
+          const res = await fetch('/api/auth/me');
+          if (res.ok) {
+              const { user } = await res.json();
+              if (user) {
+                  set({ user, isAuthenticated: true });
+                  await get().fetchSpaces();
+              }
+          }
+      } catch (e) {
+          console.error("Auth Check Failed", e);
+      }
+  },
+
+  // Drive Data
+  spaces: [],
+  entries: {},
   uploads: {},
   
-  activeSpaceId: initialSpaces[0]?.id || 'personal',
+  activeSpaceId: null,
   currentPath: '',
   selectedPaths: new Set(),
+
+  fetchSpaces: async () => {
+      const res = await fetch('/api/spaces');
+      if (res.ok) {
+          const { spaces } = await res.json();
+          set({ spaces });
+          // Set active space if none or invalid
+          const { activeSpaceId } = get();
+          if (!activeSpaceId && spaces.length > 0) {
+              set({ activeSpaceId: spaces[0].id });
+          }
+      }
+  },
+
+  createSpace: async (name: string) => {
+      const res = await fetch('/api/spaces', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name })
+      });
+      if (res.ok) {
+          await get().fetchSpaces();
+      }
+  },
+
+  deleteSpace: async (id: string) => {
+      await fetch(`/api/spaces/${id}`, { method: 'DELETE' });
+      await get().fetchSpaces();
+  },
 
   setActiveSpace: (spaceId) => set({ 
     activeSpaceId: spaceId, 

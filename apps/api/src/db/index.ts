@@ -5,11 +5,9 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const client = new pg.Client({
+// Use Pool for better connection management in web server context
+const pool = new pg.Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
-// For now we don't connect immediately to avoid crashing before DB is up
-// await client.connect();
-
-export const db = drizzle(client, { schema });
+export const db = drizzle(pool, { schema });

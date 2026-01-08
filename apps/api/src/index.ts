@@ -1,19 +1,23 @@
 import { serve } from '@hono/node-server';
-import { Hono } from 'hono';
-import { cors } from 'hono/cors';
+import { runMigrations } from './db/migrate.js';
+import { setupApp } from './app.js';
 
-const app = new Hono();
+const startServer = async () => {
+  // Run migrations before starting server
+  await runMigrations();
 
-app.use('/*', cors());
+  const app = setupApp();
 
-app.get('/', (c) => {
-  return c.json({ message: 'HSS Drive API Ready' });
-});
+  const port = 3000;
+  console.log(`Server is running on port ${port}`);
 
-const port = 3000;
-console.log(`Server is running on port ${port}`);
+  serve({
+    fetch: app.fetch,
+    port
+  });
+};
 
-serve({
-  fetch: app.fetch,
-  port
+startServer().catch((err) => {
+  console.error("Failed to start server:", err);
+  process.exit(1);
 });

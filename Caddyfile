@@ -1,12 +1,16 @@
-# Frontend (SPA) - Serve static files
-:80 {
-    root * /srv
-    encode gzip
-    try_files {path} {path}/ /index.html
-    file_server
-}
+# Frontend (SPA) + API Reverse Proxy
 
-# API Reverse Proxy
-:80/api/* {
-    reverse_proxy api:3000
+:80 {
+    # API: Strip /api prefix and forward to backend
+    handle_path /api/* {
+        reverse_proxy api:3000
+    }
+
+    # Frontend: Serve static files for everything else
+    handle {
+        root * /srv
+        encode gzip
+        try_files {path} {path}/ /index.html
+        file_server
+    }
 }

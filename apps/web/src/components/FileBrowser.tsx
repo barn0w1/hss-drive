@@ -22,9 +22,10 @@ export function FileBrowser() {
   const toggleSelection = useDriveStore((state) => state.toggleSelection);
 
   const items = useMemo(() => {
+    if (!activeSpaceId) return [];
     const spaceEntries = entries[activeSpaceId] || [];
 
-    return spaceEntries.filter(item => {
+    return spaceEntries.filter((item: Entry) => {
       // If currentPath is empty, we want top-level items (no slash)
       if (currentPath === "") {
         return !item.path.includes('/');
@@ -110,7 +111,7 @@ export function FileBrowser() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {items.map((item) => {
+            {items.map((item: Entry) => {
               const isSelected = selectedPaths.has(item.path);
               return (
                 <tr 
