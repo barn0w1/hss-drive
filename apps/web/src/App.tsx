@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { Sidebar } from '@/components/Sidebar';
 import { FileBrowser } from '@/components/FileBrowser';
 import { Inspector } from '@/components/Inspector';
-import { UploadProgress } from '@/features/upload/components/UploadProgress';
 import { LoginScreen } from '@/components/LoginScreen';
 import { useDriveStore } from '@/store';
 import { Loader2 } from 'lucide-react';
@@ -11,6 +10,7 @@ function App() {
   const checkAuth = useDriveStore(s => s.checkAuth);
   const isAuthenticated = useDriveStore(s => s.isAuthenticated);
   const user = useDriveStore(s => s.user);
+  const uploads = useDriveStore(s => s.uploads);
   
   // Initial Auth Check
   const [init, setInit] = useState(true);
@@ -18,6 +18,24 @@ function App() {
   useEffect(() => {
     checkAuth().finally(() => setInit(false));
   }, []);
+
+  // Browser Safeguard: Prevent accidental tab close during upload
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+        const hasActiveUploads = Object.values(uploads).some(
+            u => u.status === 'uploading' || u.status === 'hashing' || u.status === 'pending'
+        );
+        
+        if (hasActiveUploads) {
+            e.preventDefault();
+            e.returnValue = ''; // Chrome requires returnValue to be set
+            return '';
+        }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [uploads]);
 
   if (init) {
       return (
@@ -47,9 +65,6 @@ function App() {
              <Inspector />
          </div>
       </main>
-      
-      {/* Global Overlays */}
-      <UploadProgress />
     </div>
   );
 }

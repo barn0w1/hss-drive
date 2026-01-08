@@ -10,6 +10,7 @@ import {
 import clsx from 'clsx';
 import { useDriveStore } from '@/store';
 import { useMemo, useState } from 'react';
+import { SidebarActivityWidget } from './SidebarActivityWidget';
 
 export function Sidebar() {
   const spaces = useDriveStore((state) => state.spaces);
@@ -144,6 +145,8 @@ export function Sidebar() {
         </div>
 
       </div>
+
+      <SidebarActivityWidget />
 
       {/* User Footer */}
       <div className="p-3 border-t border-[#E5E7EB]">

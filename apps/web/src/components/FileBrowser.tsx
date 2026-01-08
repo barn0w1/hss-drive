@@ -18,6 +18,7 @@ import { useDriveStore, Entry, Space } from '@/store';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { Uploader } from '@/features/upload/Uploader';
 import clsx from 'clsx';
+import { UploadGhostRow } from './UploadGhostRow';
 
 function FileIcon({ item }: { item: Entry }) {
     if (item.type === 'dir') return <Folder className="w-5 h-5 text-blue-500 fill-blue-500/10" />;
@@ -66,6 +67,7 @@ export function FileBrowser() {
   const activeSpaceId = useDriveStore((state) => state.activeSpaceId);
   const pinnedSpaceIds = useDriveStore((state) => state.pinnedSpaceIds);
   const selectedIds = useDriveStore((state) => state.selectedIds);
+  const uploads = useDriveStore((state) => state.uploads);
   
   const openFolder = useDriveStore((state) => state.openFolder);
   const toggleSelection = useDriveStore((state) => state.toggleSelection);
@@ -79,6 +81,16 @@ export function FileBrowser() {
 
   const pinnedSpaces = useMemo(() => spaces.filter(s => pinnedSpaceIds.includes(s.id)), [spaces, pinnedSpaceIds]);
   const otherSpaces = useMemo(() => spaces.filter(s => !pinnedSpaceIds.includes(s.id)), [spaces, pinnedSpaceIds]);
+
+  // Filter uploads for current view
+  const activeUploadsInCurrentView = useMemo(() => {
+    if (!activeSpaceId) return [];
+    return Object.values(uploads).filter(u => 
+        u.spaceId === activeSpaceId && 
+        (u.targetPath === currentFolderId || (!currentFolderId && u.targetPath === 'root')) &&
+        (u.status === 'pending' || u.status === 'hashing' || u.status === 'uploading')
+    );
+  }, [uploads, activeSpaceId, currentFolderId]);
 
   const handleRowClick = (e: React.MouseEvent, id: string) => {
     const multi = e.metaKey || e.ctrlKey;
@@ -295,7 +307,12 @@ export function FileBrowser() {
             </tr>
           </thead>
           <tbody className="bg-white">
-            {items.length === 0 ? (
+            {/* Ghost Rows for Active Uploads */}
+            {activeUploadsInCurrentView.map(upload => (
+               <UploadGhostRow key={upload.id} session={upload} />
+            ))}
+
+            {items.length === 0 && activeUploadsInCurrentView.length === 0 ? (
                <tr>
                   <td colSpan={5} className="py-32 text-center text-[#9CA3AF]">
                       <div className="flex flex-col items-center justify-center">
