@@ -20,6 +20,7 @@ export interface UploadSession {
 
 export interface UploaderOptions {
   spaceId?: string; // Target space
+  parentId?: string | null; // Target folder ID
   chunkSize?: number; // Default from shared config (e.g. 128MB)
   onProgress?: (state: Partial<UploadSession>) => void;
   onComplete?: (hash: string) => void;

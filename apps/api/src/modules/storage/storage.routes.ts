@@ -115,7 +115,7 @@ app.post("/multipart/complete", async (c) => {
     if (!user) return c.json({ error: "Unauthorized" }, 401);
 
     const body = await c.req.json();
-    const { key, uploadId, parts, filename, contentType, size, hash, spaceId } = body;
+    const { key, uploadId, parts, filename, contentType, size, hash, spaceId, parentId } = body;
 
     try {
         // 1. If keyprovided, finalize file on S3/R2 (Otherwise it's a dedupe link)
@@ -173,7 +173,7 @@ app.post("/multipart/complete", async (c) => {
              blobHash: hash,
              spaceId: targetSpaceId,
              type: 'file',
-             parentId: null // root for now
+             parentId: parentId || null
         }).returning();
         
         return c.json({ success: true, blobId: hash, fileId: newFile.id });

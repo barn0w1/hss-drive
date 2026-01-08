@@ -55,7 +55,7 @@ export class Uploader {
       if (initData.exists) {
           console.log("CAS Hit: Instant upload");
           this.emitProgress({ status: 'completed', progress: 100, hashProgress: 100, uploadProgress: 100 });
-          await this.completeUpload(null, null, [], hash, this.options.spaceId!);
+          await this.completeUpload(null, null, [], hash, this.options.spaceId!, this.options.parentId);
           return hash;
       }
       
@@ -71,7 +71,7 @@ export class Uploader {
           });
           
           this.emitProgress({ status: 'completed', progress: 100, hashProgress: 100, uploadProgress: 100 });
-          await this.completeUpload(initData.key, null, [], hash, this.options.spaceId!);
+          await this.completeUpload(initData.key, null, [], hash, this.options.spaceId!, this.options.parentId);
           return hash;
       }
 
@@ -135,7 +135,7 @@ export class Uploader {
       parts.sort((a, b) => a.PartNumber - b.PartNumber);
 
       // Step 4: Complete
-      await this.completeUpload(key, uploadId, parts, hash, this.options.spaceId!);
+      await this.completeUpload(key, uploadId, parts, hash, this.options.spaceId!, this.options.parentId);
 
       this.options.onComplete?.(hash);
       return hash;
@@ -172,7 +172,8 @@ export class Uploader {
       uploadId: string | null, 
       parts: any[], 
       hash: string, 
-      spaceId: string
+      spaceId: string,
+      parentId?: string | null
   ) {
       await this.apiCall('/api/storage/multipart/complete', {
           key,
@@ -182,7 +183,8 @@ export class Uploader {
           contentType: this.file.type || 'application/octet-stream',
           size: this.file.size,
           hash,
-          spaceId
+          spaceId,
+          parentId
       });
   }
 

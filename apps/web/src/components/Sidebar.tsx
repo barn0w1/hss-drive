@@ -3,26 +3,35 @@ import {
   Box,
   Trash2,
   LogOut,
-  FolderPlus
+  FolderPlus,
+  LayoutGrid,
+  Pin,
+  ChevronRight
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useDriveStore } from '@/store';
-import { useRef, useState } from 'react';
+import { useRef, useState, useMemo } from 'react';
 import { Uploader } from '@/features/upload/Uploader';
 
 export function Sidebar() {
   const spaces = useDriveStore((state) => state.spaces);
   const activeSpaceId = useDriveStore((state) => state.activeSpaceId);
+  const pinnedSpaceIds = useDriveStore((state) => state.pinnedSpaceIds);
+  const toggleSpacePin = useDriveStore((state) => state.toggleSpacePin);
   const setActiveSpace = useDriveStore((state) => state.setActiveSpace);
   const createSpace = useDriveStore((state) => state.createSpace);
   const deleteSpace = useDriveStore((state) => state.deleteSpace);
   const logout = useDriveStore((state) => state.logout);
-  const currentPath = useDriveStore((state) => state.currentPath);
+  const currentFolderId = useDriveStore((state) => state.currentFolderId);
+  const createFolder = useDriveStore((state) => state.createFolder);
   
   const [isCreatingSpace, setIsCreatingSpace] = useState(false);
   const [newSpaceName, setNewSpaceName] = useState('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const pinnedSpaces = useMemo(() => spaces.filter(s => pinnedSpaceIds.includes(s.id)), [spaces, pinnedSpaceIds]);
+  const otherSpaces = useMemo(() => spaces.filter(s => !pinnedSpaceIds.includes(s.id)), [spaces, pinnedSpaceIds]);
 
   const handleCreateSpace = async (e: React.FormEvent) => {
       e.preventDefault();
@@ -30,6 +39,13 @@ export function Sidebar() {
       await createSpace(newSpaceName);
       setNewSpaceName('');
       setIsCreatingSpace(false);
+  };
+
+  const handleCreateFolder = async () => {
+      const name = prompt("Enter folder name");
+      if (name) {
+          await createFolder(name);
+      }
   };
 
   const handleUploadClick = () => {
@@ -43,14 +59,11 @@ export function Sidebar() {
           return;
       }
       const files = Array.from(e.target.files);
-      // Capture the space ID at the start of the upload
       const targetSpaceId = activeSpaceId; 
-      
+      const targetFolderId = currentFolderId;
+
       files.forEach(file => {
         const uploadId = Math.random().toString(36).substring(7);
-        const targetPath = currentPath; 
-        
-        // 1. Add to store
         useDriveStore.getState().addUpload({
           id: uploadId,
           spaceId: targetSpaceId, 
@@ -59,138 +72,201 @@ export function Sidebar() {
           hashProgress: 0,
           uploadProgress: 0,
           status: 'pending',
-          targetPath: targetPath
+          targetPath: targetFolderId || 'root'
         });
 
-        // 2. Start Upload
         const uploader = new Uploader(file, {
-          spaceId: targetSpaceId, // Pass spaceId to uploader options
+          spaceId: targetSpaceId,
+          parentId: targetFolderId,
           onProgress: (progress) => {
              useDriveStore.getState().updateUploadProgress(uploadId, progress);
           },
           onComplete: (hash) => {
              useDriveStore.getState().completeUpload(uploadId, hash);
-             
-             // 3. Add to file list
-             const newDisplayPath = targetPath ? `${targetPath}/${file.name}` : file.name;
-             
-             useDriveStore.getState().addEntry(targetSpaceId, {
-                path: newDisplayPath,
-                name: file.name,
-                type: 'file',
-                size: file.size,
-                updatedAt: new Date().toISOString()
-             });
+             useDriveStore.getState().refreshFolder();
           },
           onError: (err) => {
              useDriveStore.getState().failUpload(uploadId, err.message || 'Unknown error');
           }
         });
-
+        
         uploader.upload().catch(console.error);
       });
     }
     
-    // Reset the input so the same file selection works again
     if (fileInputRef.current) {
         fileInputRef.current.value = '';
     }
   };
 
   return (
-    <aside className="w-64 bg-gray-50 border-r border-gray-200 flex flex-col pt-4 pb-4">
-      <div className="px-6 mb-6">
-        <div className="flex items-center gap-2 mb-6 text-gray-700">
-           <img src="/icon.svg" alt="Logo" className="w-8 h-8" />
-           <span className="text-xl font-semibold">Drive</span>
-        </div>
-        
-        <input 
-            type="file" 
-            ref={fileInputRef} 
-            className="hidden" 
-            multiple 
-            onChange={handleFileSelect} 
-        />
+    <aside className="w-64 bg-gray-50 border-r border-gray-200 flex flex-col pt-6 pb-4">
+      <div className="px-5 mb-8">
+        <h1 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white">
+                <Box className="w-5 h-5" />
+            </div>
+            HSS Drive
+        </h1>
 
         <button 
-            onClick={handleUploadClick}
-            className="flex items-center gap-2 bg-white border border-gray-300 rounded-2xl px-4 py-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer w-full text-left"
+          onClick={handleUploadClick}
+          disabled={!activeSpaceId}
+          className={clsx(
+            "w-full rounded-xl py-3 px-4 shadow-sm flex items-center justify-center gap-2 transition-all font-medium mb-3",
+            activeSpaceId 
+                ? "bg-blue-600 hover:bg-blue-700 text-white hover:shadow-md cursor-pointer" 
+                : "bg-gray-200 text-gray-400 cursor-not-allowed"
+          )}
         >
-          <Plus className="w-5 h-5 text-blue-600" />
-          <span className="text-sm font-medium text-gray-700">New Item</span>
+          <Plus className="w-5 h-5" />
+          <span>New Upload</span>
         </button>
+        <button
+            onClick={handleCreateFolder}
+            disabled={!activeSpaceId}
+            className={clsx(
+                "w-full border border-gray-200 rounded-xl py-2.5 px-4 flex items-center justify-center gap-2 transition-all font-medium text-sm",
+                activeSpaceId
+                    ? "text-gray-700 hover:bg-gray-100 bg-white"
+                    : "text-gray-300 border-gray-100 bg-transparent cursor-not-allowed"
+            )}
+        >
+            <FolderPlus className="w-4 h-4" />
+            <span>New Folder</span>
+        </button>
+        <input 
+          type="file" 
+          ref={fileInputRef} 
+          className="hidden" 
+          multiple
+          onChange={handleFileSelect}
+        />
       </div>
 
-      <nav className="flex-1 px-3 overflow-y-auto">
-        <div className="flex items-center justify-between px-3 mb-2">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Spaces</p>
-            <button 
-                onClick={() => setIsCreatingSpace(true)}
-                className="text-gray-400 hover:text-blue-600 cursor-pointer p-1"
-                title="Create Space"
+      <nav className="flex-1 px-3 space-y-6 overflow-y-auto">
+        {/* Main Nav */}
+        <div className="space-y-1">
+            <button
+                onClick={() => setActiveSpace(null)}
+                className={clsx(
+                    "w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-colors",
+                    !activeSpaceId
+                        ? "bg-blue-50 text-blue-700"
+                        : "text-gray-700 hover:bg-gray-100"
+                )}
             >
-                <FolderPlus className="w-4 h-4" />
+                <LayoutGrid className={clsx("w-5 h-5", !activeSpaceId ? "text-blue-500" : "text-gray-400")} />
+                Dashboard
             </button>
         </div>
 
-        {isCreatingSpace && (
-             <form onSubmit={handleCreateSpace} className="px-3 mb-2">
-                 <input 
-                    autoFocus
-                    className="w-full text-sm border border-blue-300 rounded px-2 py-1 outline-none"
-                    placeholder="Space Name..."
-                    value={newSpaceName}
-                    onChange={e => setNewSpaceName(e.target.value)}
-                    onBlur={() => !newSpaceName && setIsCreatingSpace(false)}
-                 />
-             </form>
+        {/* Pinned Spaces */}
+        {pinnedSpaces.length > 0 && (
+            <div>
+                <h3 className="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                    Pinned Spaces
+                </h3>
+                <div className="space-y-0.5">
+                    {pinnedSpaces.map(space => (
+                        <div key={space.id} className="group relative flex items-center">
+                            <button
+                                onClick={() => setActiveSpace(space.id)}
+                                className={clsx(
+                                    "flex-1 flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                                    activeSpaceId === space.id
+                                        ? "bg-blue-50 text-blue-700"
+                                        : "text-gray-700 hover:bg-gray-100"
+                                )}
+                            >
+                                <Pin className={clsx("w-4 h-4", activeSpaceId === space.id ? "text-blue-500 fill-current" : "text-gray-400 fill-current")} />
+                                <span className="truncate">{space.name}</span>
+                            </button>
+                            <button
+                                onClick={(e) => { e.stopPropagation(); toggleSpacePin(space.id); }}
+                                className="absolute right-2 opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-200 rounded text-gray-400"
+                                title="Unpin"
+                            >
+                                <Pin className="w-3 h-3 fill-none" />
+                            </button>
+                        </div>
+                    ))}
+                </div>
+            </div>
         )}
-        
-        {spaces.map((space) => {
-          const isActive = activeSpaceId === space.id;
-          return (
-            <div key={space.id} className="group relative flex items-center mb-1">
-                <button
-                onClick={() => setActiveSpace(space.id)}
-                className={clsx(
-                    "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
-                    isActive 
-                    ? "bg-blue-100 text-blue-700" 
-                    : "text-gray-700 hover:bg-gray-200"
-                )}
-                >
-                <Box className={clsx("w-5 h-5", space.meta?.color || 'text-gray-500')} />
-                <span className="truncate flex-1 text-left">{space.name}</span>
-                </button>
-                
+
+        {/* All Spaces (Collapsible or just listed?) - Listing for accessibility but maybe hiding if not pinned? 
+            Let's list all spaces but separate 'Other Spaces' 
+        */}
+        <div>
+            <div className="flex items-center justify-between px-3 mb-2">
+                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                    All Spaces
+                </h3>
                 <button 
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        if(confirm('Delete space?')) deleteSpace(space.id);
-                    }}
-                    className="absolute right-2 opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500 transition-opacity"
+                    onClick={() => setIsCreatingSpace(true)}
+                    className="p-1 hover:bg-gray-200 rounded text-gray-500 transition-colors"
                 >
-                    <Trash2 className="w-4 h-4" />
+                    <Plus className="w-3.5 h-3.5" />
                 </button>
             </div>
-          );
-        })}
+            
+            {isCreatingSpace && (
+                <form onSubmit={handleCreateSpace} className="px-3 mb-2">
+                    <input
+                        autoFocus
+                        type="text"
+                        className="w-full text-sm border border-blue-300 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                        placeholder="Space name..."
+                        value={newSpaceName}
+                        onChange={e => setNewSpaceName(e.target.value)}
+                        onBlur={() => !newSpaceName && setIsCreatingSpace(false)}
+                    />
+                </form>
+            )}
+
+            <div className="space-y-0.5">
+                {otherSpaces.map(space => (
+                    <div key={space.id} className="group relative flex items-center">
+                        <button
+                            onClick={() => setActiveSpace(space.id)}
+                            className={clsx(
+                                "flex-1 flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                                activeSpaceId === space.id
+                                    ? "bg-blue-50 text-blue-700"
+                                    : "text-gray-700 hover:bg-gray-100"
+                            )}
+                        >
+                            <Box className={clsx("w-4 h-4", activeSpaceId === space.id ? "text-blue-500" : "text-gray-400")} />
+                            <span className="truncate">{space.name}</span>
+                        </button>
+                        <div className="absolute right-2 flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                             <button 
+                                onClick={(e) => { e.stopPropagation(); toggleSpacePin(space.id); }}
+                                className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded"
+                                title="Pin"
+                            >
+                                <Pin className="w-3.5 h-3.5" />
+                            </button>
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); deleteSpace(space.id); }}
+                                className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded"
+                                title="Delete"
+                            >
+                                <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
       </nav>
 
-      <div className="px-6 mt-4 border-t border-gray-200 pt-4">
-         <button 
-            onClick={() => logout()}
-            className="flex items-center gap-2 text-sm text-gray-600 hover:text-red-600 transition-colors w-full px-2 py-2 rounded mb-2"
-         >
-             <LogOut className="w-4 h-4" />
-             Logout
-         </button>
-
-        <div className="bg-gray-200 rounded-full h-1 w-full overflow-hidden">
-          <div className="bg-blue-600 w-3/4 h-full" />
-        </div>
-        <p className="text-xs text-gray-500 mt-2">11.5 GB of 15 GB used</p>
+      <div className="px-5 pt-4 border-t border-gray-200">
+        <button onClick={logout} className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-gray-600 rounded-lg hover:bg-red-50 hover:text-red-600 w-full transition-colors group">
+          <LogOut className="w-4 h-4 group-hover:stroke-red-600" />
+          <span>Sign out</span>
+        </button>
       </div>
     </aside>
   );

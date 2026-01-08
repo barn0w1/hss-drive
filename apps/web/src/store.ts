@@ -52,6 +52,7 @@ interface DriveState extends AuthState {
   activeSpaceId: string | null;
   currentFolderId: string | null; 
   breadcrumbs: Breadcrumb[];
+  pinnedSpaceIds: string[];
   
   selectedIds: Set<string>;
 
@@ -59,8 +60,9 @@ interface DriveState extends AuthState {
   fetchSpaces: () => Promise<void>;
   createSpace: (name: string) => Promise<void>;
   deleteSpace: (id: string) => Promise<void>;
+  toggleSpacePin: (id: string) => void;
 
-  setActiveSpace: (spaceId: string) => void;
+  setActiveSpace: (spaceId: string | null) => void;
   
   // Folder Navigation
   openFolder: (folderId: string | null, folderName?: string) => void;
@@ -131,16 +133,18 @@ export const useDriveStore = create<DriveState>((set, get) => ({
   currentFolderId: null,
   breadcrumbs: [{ id: null, name: 'Home' }],
   selectedIds: new Set(),
+  pinnedSpaceIds: JSON.parse(localStorage.getItem('hss_pinned_spaces') || '[]'),
 
   fetchSpaces: async () => {
       const res = await fetch('/api/spaces');
       if (res.ok) {
           const { spaces } = await res.json();
           set({ spaces });
-          const { activeSpaceId } = get();
-          if (!activeSpaceId && spaces.length > 0) {
-              get().setActiveSpace(spaces[0].id);
-          }
+          // Auto-selection disabled to show Space Dashboard by default
+          // const { activeSpaceId } = get();
+          // if (!activeSpaceId && spaces.length > 0) {
+          //    get().setActiveSpace(spaces[0].id);
+          // }
       }
   },
 
@@ -159,6 +163,18 @@ export const useDriveStore = create<DriveState>((set, get) => ({
       await fetch(`/api/spaces/${id}`, { method: 'DELETE' });
       await get().fetchSpaces();
   },
+
+  toggleSpacePin: (id: string) => set((state) => {
+    const isPinned = state.pinnedSpaceIds.includes(id);
+    const newPins = isPinned 
+        ? state.pinnedSpaceIds.filter(pid => pid !== id)
+        : [...state.pinnedSpaceIds, id];
+    
+    try {
+        localStorage.setItem('hss_pinned_spaces', JSON.stringify(newPins));
+    } catch (e) { console.error("Failed to save pins", e); }
+    return { pinnedSpaceIds: newPins };
+  }),
 
   setActiveSpace: (spaceId) => {
       set({ 
