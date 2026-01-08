@@ -10,6 +10,7 @@ export interface Entry {
   type: EntryType;
   size: number;
   mimeType?: string;
+  blobHash?: string;
   isStarred: boolean;
   isTrashed: boolean;
   updatedAt: string;

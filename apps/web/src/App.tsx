@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Sidebar } from '@/components/Sidebar';
 import { FileBrowser } from '@/components/FileBrowser';
+import { Inspector } from '@/components/Inspector';
 import { UploadProgress } from '@/features/upload/components/UploadProgress';
 import { LoginScreen } from '@/components/LoginScreen';
 import { useDriveStore } from '@/store';
@@ -11,7 +12,7 @@ function App() {
   const isAuthenticated = useDriveStore(s => s.isAuthenticated);
   const user = useDriveStore(s => s.user);
   
-  // Initial Auth Check (very simple state management for now)
+  // Initial Auth Check
   const [init, setInit] = useState(true);
 
   useEffect(() => {
@@ -32,10 +33,22 @@ function App() {
 
   return (
     <div className="flex h-screen w-screen bg-gray-50 text-gray-900 overflow-hidden font-sans">
+      {/* Pane A: Navigation Sidebar */}
       <Sidebar />
-      <main className="flex-1 flex flex-col min-w-0 bg-white">
-        <FileBrowser />
+      
+      {/* Pane B: Main Content Area */}
+      <main className="flex-1 flex flex-col min-w-0 bg-white relative z-0">
+         <div className="flex-1 flex overflow-hidden">
+             <div className="flex-1 flex flex-col min-w-0 relative">
+                <FileBrowser />
+             </div>
+             
+             {/* Pane C: Inspector (conditionally rendered by component itself) */}
+             <Inspector />
+         </div>
       </main>
+      
+      {/* Global Overlays */}
       <UploadProgress />
     </div>
   );

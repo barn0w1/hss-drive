@@ -1,5 +1,5 @@
 {
-  "id": "9520c5c4-b848-4a0d-88c2-79ef4bed9a20",
+  "id": "fd5fb8f7-9230-43c3-a691-1b1192ccd44a",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -42,8 +42,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.files": {
-      "name": "files",
+    "public.nodes": {
+      "name": "nodes",
       "schema": "",
       "columns": {
         "id": {
@@ -148,9 +148,9 @@
         }
       },
       "foreignKeys": {
-        "files_space_id_spaces_id_fk": {
-          "name": "files_space_id_spaces_id_fk",
-          "tableFrom": "files",
+        "nodes_space_id_spaces_id_fk": {
+          "name": "nodes_space_id_spaces_id_fk",
+          "tableFrom": "nodes",
           "tableTo": "spaces",
           "columnsFrom": [
             "space_id"
@@ -161,10 +161,10 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "files_parent_id_files_id_fk": {
-          "name": "files_parent_id_files_id_fk",
-          "tableFrom": "files",
-          "tableTo": "files",
+        "nodes_parent_id_nodes_id_fk": {
+          "name": "nodes_parent_id_nodes_id_fk",
+          "tableFrom": "nodes",
+          "tableTo": "nodes",
           "columnsFrom": [
             "parent_id"
           ],
@@ -174,9 +174,9 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "files_blob_hash_blobs_hash_fk": {
-          "name": "files_blob_hash_blobs_hash_fk",
-          "tableFrom": "files",
+        "nodes_blob_hash_blobs_hash_fk": {
+          "name": "nodes_blob_hash_blobs_hash_fk",
+          "tableFrom": "nodes",
           "tableTo": "blobs",
           "columnsFrom": [
             "blob_hash"
